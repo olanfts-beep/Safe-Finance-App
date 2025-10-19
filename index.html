@@ -187,16 +187,18 @@
       orderBy,
       updateDoc
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    // === PASTE YOUR REAL FIREBASE CONFIG HERE ===
-    Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyDSrA2e5dtgeY5I1x-IunaW9-qpCncegV0",
-  authDomain: "bank-project-safe.firebaseapp.com",
-  projectId: "bank-project-safe",
-  storageBucket: "bank-project-safe.firebasestorage.app",
-  messagingSenderId: "981484139685",
-  appId: "1:981484139685:web:2246247944fa4c2a64494c"
-};
+    
+    // === FIX: The line below was not a comment and was breaking the script. I've now commented it out. ===
+    // Your web app's Firebase configuration 
+    const firebaseConfig = {
+      apiKey: "AIzaSyDSrA2e5dtgeY5I1x-IunaW9-qpCncegV0",
+      authDomain: "bank-project-safe.firebaseapp.com",
+      projectId: "bank-project-safe",
+      storageBucket: "bank-project-safe.firebasestorage.app",
+      messagingSenderId: "981484139685",
+      appId: "1:981484139685:web:2246247944fa4c2a64494c"
+    };
+
     // ===============================================
     // --- GLOBAL VARIABLES ---
     let auth, db, currentUserId, unsubscribeFromTransactions;
@@ -453,3 +455,5 @@ const firebaseConfig = {
 </body>
 
 </html>
+
+
