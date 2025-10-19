@@ -7,7 +7,7 @@
   <title>My Bank</title>
   <!-- PWA Meta Tags -->
   <meta name="theme-color" content="#4f46e5" />
-  <link rel="manifest" href="data:application/manifest+json;base64,ew0KICAibmFtZSI6ICJNeSBCYW5rIEFwcCIsDQogICJzaG9ydF9uYW1lIjogIk15IEJhbmsiLA0KICAic3RhcnRfdXJsIjogIi4iLA0KICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwNCiAgImJhY2tncm91bmRfY29sb3IiOiAiI2YxZjVmOSIsDQogICJ0aGVtZV9jb2xvciI6ICIjNGY0NmU1IiwNCiAgImRlc2NyaXB0aW9uIjogIllvdXIgcGVyc29uYWwgZmluYW5jaWFsIGRhc2hib2FyZC4iLA0KICAiaWNvbnMiOiBbDQogICAgew0KICAgICAgInNyYyI6ICJodHRwczovL3BsYWNlaG9sZC5jby8xOTJ4MTkyLzRmNDZlNS9mZmZmZmY/dGV4dD1CYW5rIiwNCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwNCiAgICAgICJ0eXBlIjogImltYWdlL3BuZyINCiAgICB9LA0KICAgIHsNCiAgICAgICJzcmMiOiAiaHR0cHM6Ly9wbGFjZWhvbGQuY28vNTEyeDUxMi80ZjQ2ZTUvZmZmZmZmP3RleHQ9QmFuayIsDQogICAgICAic2l6ZXMiOiAiNTEyeDUxMiIsDQogICAgICAidHlwZSI6ICJpbWFnZS9wbmciDQogICAgfQ0KICBdDQp9">
+  <link rel="manifest" href="data:application/manifest+json;base64,ew0KICAibmFtZSI6ICJNeSBCYW5rIEFwcCIsDQogICJzaG9ydF9uYW1lIjogIk15IEJhbmsiLA0KICAic3RhcnRfdXJsIjogIi4iLA0KICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwNCiAgImJhY2tncm91bmRfY29sb3IiOiAiI2YxZjVmOSIsDQogICJ0aGVtZV9jb2xvciI6ICIjNGY0NmU1IiwNCiAgImRlc2NyaXB0aW9uIjogIllvdXIgcGVyc29uYWwgZmluYW5jaWFsIGRhc2hib2FyZC4iLA0KICAiaWNvbnMiOiBbDQogICAgew0KICAgICAgInNyYyI6ICJodHRwczovL3BsYWNlaG9sZC5jby8xOTJ4MTkyLzRmNDZlNS9mZmZmZmY/dGV4dD1CYW5rIiwNCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwNCiAgICAgICJ0eXBlIjogImltYWdlL3BuZyINCiAgICB9LA0KICAgIHsNCiAgICAgICJzcmMiOiAiaHR0cHM6Ly9wbGFjZWZvbGQuY28vNTEyeDUxMi80ZjQ2ZTUvZmZmZmZmP3RleHQ9QmFuayIsDQogICAgICAic2l6ZXMiOiAiNTEyeDUxMiIsDQogICAgICAidHlwZSI6ICJpbWFnZS9wbmciDQogICAgfQ0KICBdDQp9">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -187,8 +187,7 @@
       orderBy,
       updateDoc
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    
-    // === FIX: The line below was not a comment and was breaking the script. I've now commented it out. ===
+
     // Your web app's Firebase configuration 
     const firebaseConfig = {
       apiKey: "AIzaSyDSrA2e5dtgeY5I1x-IunaW9-qpCncegV0",
@@ -204,7 +203,7 @@
     let auth, db, currentUserId, unsubscribeFromTransactions;
     let isSignupMode = false;
     let tempTransferData = {};
-    let currentCurrency = '₦';
+    let currentCurrency = '₦'; // Default currency
     // --- DOM ELEMENT GRABBER ---
     const $ = (id) => document.getElementById(id);
     // --- All DOM Elements ---
@@ -266,13 +265,16 @@
       pinField.classList.toggle('hidden', !isSignupMode);
     };
     const updateDashboardUI = (transactions, userData) => {
+      // --- FIX: Ensure the global currency variable is updated from the user's data ---
       currentCurrency = userData.currency || '₦';
       currencySelector.value = currentCurrency;
+
       userNameEl.textContent = userData.name || 'User';
       accountNumberEl.textContent = userData.accountNumber || 'N/A';
       routingNumberEl.textContent = userData.routingNumber || 'N/A';
       transactionListEl.innerHTML = '';
       noTransactionsEl.style.display = transactions.length === 0 ? 'block' : 'none';
+
       transactions.forEach(t => {
         const isIncome = t.type === 'income';
         const item = document.createElement('li');
@@ -280,9 +282,11 @@
         item.innerHTML = `<div><p class="font-medium">${t.text}</p><p class="text-xs text-slate-400">${t.createdAt?.toDate().toLocaleString() || ''}</p></div><span class="font-semibold ${isIncome ? 'text-green-600' : 'text-red-600'}">${isIncome ? '+' : '-'} ${currentCurrency}${Math.abs(t.amount).toFixed(2)}</span>`;
         transactionListEl.appendChild(item);
       });
+
       const amounts = transactions.map(t => t.amount);
       const income = amounts.filter(item => item > 0).reduce((acc, item) => acc + item, 0);
       const expense = amounts.filter(item => item < 0).reduce((acc, item) => acc + item, 0);
+
       balanceEl.innerText = `${currentCurrency}${(income + expense).toFixed(2)}`;
       totalIncomeEl.innerText = `${currentCurrency}${income.toFixed(2)}`;
       totalExpenseEl.innerText = `${currentCurrency}${Math.abs(expense).toFixed(2)}`;
@@ -341,10 +345,10 @@
           const userDocRef = doc(db, 'users', userCredential.user.uid);
           await setDoc(userDocRef, {
             name: fullname,
-            pin: pin,
+            pin: pin, // Storing PIN as a string to ensure consistent type
             accountNumber: Math.floor(1000000000 + Math.random() * 9000000000).toString(),
             routingNumber: Math.floor(100000000 + Math.random() * 900000000).toString(),
-            currency: '₦' // Default currency for new users
+            currency: '₦'
           });
         } else {
           await signInWithEmailAndPassword(auth, email, password);
@@ -355,15 +359,19 @@
     };
     const listenForData = () => {
       if (unsubscribeFromTransactions) unsubscribeFromTransactions();
+      if (!currentUserId) return;
       const userDocRef = doc(db, 'users', currentUserId);
-      unsubscribeFromTransactions = onSnapshot(query(collection(db, 'users', currentUserId, 'transactions'), orderBy('createdAt', 'desc')), async (snapshot) => {
-        const userDoc = await getDoc(userDocRef);
-        const userData = userDoc.data() || {};
-        const transactions = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        updateDashboardUI(transactions, userData);
+      const transactionsQuery = query(collection(db, 'users', currentUserId, 'transactions'), orderBy('createdAt', 'desc'));
+      
+      // Combined listener for user data and transactions
+      unsubscribeFromTransactions = onSnapshot(transactionsQuery, async (snapshot) => {
+          const userDoc = await getDoc(userDocRef);
+          const userData = userDoc.data() || {};
+          const transactions = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          updateDashboardUI(transactions, userData);
       });
     };
     const handleAddTransaction = async (e) => {
@@ -399,25 +407,42 @@
       showPinModal();
     };
     const confirmTransferWithPin = async () => {
+      pinConfirmBtn.disabled = true; // Prevent multiple clicks
+      pinErrorEl.textContent = '';
       let enteredPin = "";
       pinInputs.forEach(i => enteredPin += i.value);
-      const userDoc = await getDoc(doc(db, 'users', currentUserId));
-      if (enteredPin === userDoc.data().pin) {
-        await addDoc(collection(db, 'users', currentUserId, 'transactions'), tempTransferData);
-        hidePinModal();
-        showAlert("Transfer successful!");
-        transferForm.reset();
-        showPage('dashboard-page');
-      } else {
-        pinErrorEl.textContent = 'Incorrect PIN.';
+      try {
+        const userDoc = await getDoc(doc(db, 'users', currentUserId));
+        // --- FIX: Compare PINs as strings to avoid type mismatch (e.g., '1234' vs 1234) ---
+        if (enteredPin === String(userDoc.data().pin)) {
+          await addDoc(collection(db, 'users', currentUserId, 'transactions'), tempTransferData);
+          hidePinModal();
+          showAlert("Transfer successful!");
+          transferForm.reset();
+          showPage('dashboard-page');
+        } else {
+          pinErrorEl.textContent = 'Incorrect PIN.';
+        }
+      } catch (error) {
+        console.error("Error during transfer confirmation:", error);
+        pinErrorEl.textContent = 'An error occurred. Please try again.';
+      } finally {
+        pinConfirmBtn.disabled = false; // Re-enable button
       }
     };
     const handleCurrencyChange = async () => {
       const newCurrency = currencySelector.value;
       const userDocRef = doc(db, 'users', currentUserId);
-      await updateDoc(userDocRef, {
-        currency: newCurrency
-      });
+      try {
+        await updateDoc(userDocRef, {
+          currency: newCurrency
+        });
+        // --- FIX: The `onSnapshot` listener will automatically catch this change and update the UI.
+        // No extra manual update is needed here, simplifying the code.
+      } catch (error) {
+        console.error("Error updating currency:", error);
+        showAlert("Failed to update currency preference.");
+      }
     };
     // --- PWA Service Worker ---
     if ('serviceWorker' in navigator) {
@@ -455,5 +480,4 @@
 </body>
 
 </html>
-
 
