@@ -77,20 +77,20 @@
             <h2 class="text-sm font-medium text-slate-500 uppercase">Current Balance</h2>
             <select id="currency-selector" class="bg-white border border-slate-300 rounded-md text-sm p-1">
               <option value="$">USD ($)</option>
-              <option value="₦" selected>NGN (₦)</option>
+              <option value="₦">NGN (₦)</option>
               <option value="€">EUR (€)</option>
               <option value="£">GBP (£)</option>
             </select>
           </div>
-          <p id="balance" class="text-3xl font-bold text-slate-800 mt-1">₦0.00</p>
+          <p id="balance" class="text-3xl font-bold text-slate-800 mt-1">--.--</p>
           <div class="flex mt-4 space-x-4">
             <div class="w-1/2 bg-green-100 text-green-800 p-3 rounded-lg">
               <h3>Income</h3>
-              <p id="total-income" class="text-lg font-bold">₦0.00</p>
+              <p id="total-income" class="text-lg font-bold">--.--</p>
             </div>
             <div class="w-1/2 bg-red-100 text-red-800 p-3 rounded-lg">
               <h3>Expense</h3>
-              <p id="total-expense" class="text-lg font-bold">₦0.00</p>
+              <p id="total-expense" class="text-lg font-bold">--.--</p>
             </div>
           </div>
         </div>
@@ -164,31 +164,10 @@
   </div>
 
   <script type="module">
-    import {
-      initializeApp
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import {
-      getAuth,
-      onAuthStateChanged,
-      createUserWithEmailAndPassword,
-      signInWithEmailAndPassword,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import {
-      getFirestore,
-      collection,
-      addDoc,
-      query,
-      onSnapshot,
-      doc,
-      serverTimestamp,
-      setDoc,
-      getDoc,
-      orderBy,
-      updateDoc
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    // Your web app's Firebase configuration 
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, onSnapshot, doc, serverTimestamp, setDoc, getDoc, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    
     const firebaseConfig = {
       apiKey: "AIzaSyDSrA2e5dtgeY5I1x-IunaW9-qpCncegV0",
       authDomain: "bank-project-safe.firebaseapp.com",
@@ -200,50 +179,32 @@
 
     // ===============================================
     // --- GLOBAL VARIABLES ---
-    let auth, db, currentUserId, unsubscribeFromTransactions;
+    let auth, db, currentUserId;
     let isSignupMode = false;
     let tempTransferData = {};
-    let currentCurrency = '₦'; // Default currency
+    let currentCurrency = '₦';
+    
+    // --- NEW: Caching and Listener Management ---
+    let unsubscribeFromUser, unsubscribeFromTransactions;
+    let cachedUserData = {};
+    let cachedTransactions = [];
+
     // --- DOM ELEMENT GRABBER ---
     const $ = (id) => document.getElementById(id);
     // --- All DOM Elements ---
-    const authContainer = $('auth-container'),
-      appContainer = $('app-container'),
-      dashboardPage = $('dashboard-page'),
-      transferPage = $('transfer-page');
-    const fullnameField = $('fullname-field'),
-      pinField = $('pin-field'),
-      fullnameInput = $('fullname'),
-      pinInput = $('pin');
-    const emailInput = $('email'),
-      passwordInput = $('password'),
-      authButton = $('auth-button'),
-      authErrorEl = $('auth-error'),
-      authToggleLink = $('auth-toggle-link');
-    const userNameEl = $('user-name'),
-      balanceEl = $('balance'),
-      totalIncomeEl = $('total-income'),
-      totalExpenseEl = $('total-expense');
-    const accountNumberEl = $('account-number'),
-      routingNumberEl = $('routing-number');
-    const transferBtn = $('transfer-btn'),
-      billsBtn = $('bills-btn'),
-      depositBtn = $('deposit-btn'),
-      backToDashboardBtn = $('back-to-dashboard-btn');
-    const transferForm = $('transfer-form'),
-      transactionForm = $('transaction-form');
-    const pinModal = $('pin-modal'),
-      pinInputs = document.querySelectorAll('.pin-input'),
-      pinErrorEl = $('pin-error'),
-      pinConfirmBtn = $('pin-confirm-btn'),
-      pinCancelBtn = $('pin-cancel-btn');
-    const alertModal = $('alert-modal'),
-      alertMessage = $('alert-message'),
-      alertOkBtn = $('alert-ok-btn');
-    const transactionListEl = $('transaction-list'),
-      noTransactionsEl = $('no-transactions');
+    const authContainer = $('auth-container'), appContainer = $('app-container'), dashboardPage = $('dashboard-page'), transferPage = $('transfer-page');
+    const fullnameField = $('fullname-field'), pinField = $('pin-field'), fullnameInput = $('fullname'), pinInput = $('pin');
+    const emailInput = $('email'), passwordInput = $('password'), authButton = $('auth-button'), authErrorEl = $('auth-error'), authToggleLink = $('auth-toggle-link');
+    const userNameEl = $('user-name'), balanceEl = $('balance'), totalIncomeEl = $('total-income'), totalExpenseEl = $('total-expense');
+    const accountNumberEl = $('account-number'), routingNumberEl = $('routing-number');
+    const transferBtn = $('transfer-btn'), billsBtn = $('bills-btn'), depositBtn = $('deposit-btn'), backToDashboardBtn = $('back-to-dashboard-btn');
+    const transferForm = $('transfer-form'), transactionForm = $('transaction-form');
+    const pinModal = $('pin-modal'), pinInputs = document.querySelectorAll('.pin-input'), pinErrorEl = $('pin-error'), pinConfirmBtn = $('pin-confirm-btn'), pinCancelBtn = $('pin-cancel-btn');
+    const alertModal = $('alert-modal'), alertMessage = $('alert-message'), alertOkBtn = $('alert-ok-btn');
+    const transactionListEl = $('transaction-list'), noTransactionsEl = $('no-transactions');
     const logoutBtn = $('logout-btn');
     const currencySelector = $('currency-selector');
+    
     // --- HELPER & UI FUNCTIONS ---
     const showPage = (pageId) => {
       appContainer.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -264,33 +225,40 @@
       fullnameField.classList.toggle('hidden', !isSignupMode);
       pinField.classList.toggle('hidden', !isSignupMode);
     };
+
+    // --- ROBUST UI UPDATE FUNCTION ---
     const updateDashboardUI = (transactions, userData) => {
-      // --- FIX: Ensure the global currency variable is updated from the user's data ---
-      currentCurrency = userData.currency || '₦';
-      currencySelector.value = currentCurrency;
+        if (!userData || !userData.name) {
+            return; // Exit if we don't have user data yet, preventing errors
+        }
 
-      userNameEl.textContent = userData.name || 'User';
-      accountNumberEl.textContent = userData.accountNumber || 'N/A';
-      routingNumberEl.textContent = userData.routingNumber || 'N/A';
-      transactionListEl.innerHTML = '';
-      noTransactionsEl.style.display = transactions.length === 0 ? 'block' : 'none';
+        currentCurrency = userData.currency || '₦';
+        currencySelector.value = currentCurrency;
+        
+        userNameEl.textContent = userData.name; // No fallback needed, we exited if it's missing
+        accountNumberEl.textContent = userData.accountNumber;
+        routingNumberEl.textContent = userData.routingNumber;
 
-      transactions.forEach(t => {
-        const isIncome = t.type === 'income';
-        const item = document.createElement('li');
-        item.className = `bg-slate-50 p-3 rounded-lg flex justify-between items-center border-r-4 ${isIncome ? 'border-green-500' : 'border-red-500'}`;
-        item.innerHTML = `<div><p class="font-medium">${t.text}</p><p class="text-xs text-slate-400">${t.createdAt?.toDate().toLocaleString() || ''}</p></div><span class="font-semibold ${isIncome ? 'text-green-600' : 'text-red-600'}">${isIncome ? '+' : '-'} ${currentCurrency}${Math.abs(t.amount).toFixed(2)}</span>`;
-        transactionListEl.appendChild(item);
-      });
+        transactionListEl.innerHTML = '';
+        noTransactionsEl.style.display = transactions.length === 0 ? 'block' : 'none';
+        
+        transactions.forEach(t => {
+            const isIncome = t.type === 'income';
+            const item = document.createElement('li');
+            item.className = `bg-slate-50 p-3 rounded-lg flex justify-between items-center border-r-4 ${isIncome ? 'border-green-500' : 'border-red-500'}`;
+            item.innerHTML = `<div><p class="font-medium">${t.text}</p><p class="text-xs text-slate-400">${t.createdAt?.toDate().toLocaleString() || ''}</p></div><span class="font-semibold ${isIncome ? 'text-green-600' : 'text-red-600'}">${isIncome ? '+' : '-'} ${currentCurrency}${Math.abs(t.amount).toFixed(2)}</span>`;
+            transactionListEl.appendChild(item);
+        });
 
-      const amounts = transactions.map(t => t.amount);
-      const income = amounts.filter(item => item > 0).reduce((acc, item) => acc + item, 0);
-      const expense = amounts.filter(item => item < 0).reduce((acc, item) => acc + item, 0);
-
-      balanceEl.innerText = `${currentCurrency}${(income + expense).toFixed(2)}`;
-      totalIncomeEl.innerText = `${currentCurrency}${income.toFixed(2)}`;
-      totalExpenseEl.innerText = `${currentCurrency}${Math.abs(expense).toFixed(2)}`;
+        const amounts = transactions.map(t => t.amount);
+        const income = amounts.filter(item => item > 0).reduce((acc, item) => acc + item, 0);
+        const expense = amounts.filter(item => item < 0).reduce((acc, item) => acc + item, 0);
+        
+        balanceEl.innerText = `${currentCurrency}${(income + expense).toFixed(2)}`;
+        totalIncomeEl.innerText = `${currentCurrency}${income.toFixed(2)}`;
+        totalExpenseEl.innerText = `${currentCurrency}${Math.abs(expense).toFixed(2)}`;
     };
+
     pinInputs.forEach((input, index) => {
       input.addEventListener('keyup', (e) => {
         if (e.key >= 0 && e.key <= 9) {
@@ -309,6 +277,7 @@
       pinInputs[0].focus();
     };
     const hidePinModal = () => pinModal.classList.add('hidden');
+    
     // --- FIREBASE LOGIC ---
     try {
       const app = initializeApp(firebaseConfig);
@@ -316,8 +285,9 @@
       db = getFirestore(app);
     } catch (error) {
       console.error("Firebase Init Error:", error);
-      showAlert("CRITICAL ERROR: Could not connect to the database. Check your firebaseConfig keys.");
+      showAlert("CRITICAL ERROR: Could not connect to the database.");
     }
+
     onAuthStateChanged(auth, (user) => {
       if (user) {
         currentUserId = user.uid;
@@ -326,26 +296,28 @@
         listenForData();
       } else {
         currentUserId = null;
+        cachedUserData = {};
+        cachedTransactions = [];
         authContainer.classList.add('active');
         appContainer.classList.remove('active');
+        if (unsubscribeFromUser) unsubscribeFromUser();
         if (unsubscribeFromTransactions) unsubscribeFromTransactions();
       }
     });
+
     const handleAuthAction = async () => {
-      const email = emailInput.value,
-        password = passwordInput.value;
+      const email = emailInput.value, password = passwordInput.value;
       authErrorEl.textContent = '';
       try {
         if (isSignupMode) {
-          const fullname = fullnameInput.value,
-            pin = pinInput.value;
+          const fullname = fullnameInput.value, pin = pinInput.value;
           if (fullname.trim() === '') return authErrorEl.textContent = 'Please enter your full name.';
           if (!/^\d{4}$/.test(pin)) return authErrorEl.textContent = 'PIN must be exactly 4 digits.';
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
           const userDocRef = doc(db, 'users', userCredential.user.uid);
           await setDoc(userDocRef, {
             name: fullname,
-            pin: pin, // Storing PIN as a string to ensure consistent type
+            pin: pin,
             accountNumber: Math.floor(1000000000 + Math.random() * 9000000000).toString(),
             routingNumber: Math.floor(100000000 + Math.random() * 900000000).toString(),
             currency: '₦'
@@ -357,23 +329,33 @@
         authErrorEl.textContent = error.message;
       }
     };
+    
+    // --- NEW, ROBUST DATA LISTENER ---
     const listenForData = () => {
-      if (unsubscribeFromTransactions) unsubscribeFromTransactions();
-      if (!currentUserId) return;
-      const userDocRef = doc(db, 'users', currentUserId);
-      const transactionsQuery = query(collection(db, 'users', currentUserId, 'transactions'), orderBy('createdAt', 'desc'));
-      
-      // Combined listener for user data and transactions
-      unsubscribeFromTransactions = onSnapshot(transactionsQuery, async (snapshot) => {
-          const userDoc = await getDoc(userDocRef);
-          const userData = userDoc.data() || {};
-          const transactions = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          updateDashboardUI(transactions, userData);
-      });
+        if (unsubscribeFromUser) unsubscribeFromUser();
+        if (unsubscribeFromTransactions) unsubscribeFromTransactions();
+        if (!currentUserId) return;
+
+        const userDocRef = doc(db, 'users', currentUserId);
+        const transactionsQuery = query(collection(db, 'users', currentUserId, 'transactions'), orderBy('createdAt', 'desc'));
+
+        // Listener 1: For the user's main document (name, currency, etc.)
+        unsubscribeFromUser = onSnapshot(userDocRef, (doc) => {
+            if (doc.exists()) {
+                cachedUserData = doc.data();
+                updateDashboardUI(cachedTransactions, cachedUserData);
+            } else {
+                console.log("User document does not exist.");
+            }
+        });
+
+        // Listener 2: For the transactions subcollection
+        unsubscribeFromTransactions = onSnapshot(transactionsQuery, (snapshot) => {
+            cachedTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            updateDashboardUI(cachedTransactions, cachedUserData);
+        });
     };
+
     const handleAddTransaction = async (e) => {
       e.preventDefault();
       const description = $('description').value;
@@ -391,13 +373,17 @@
         transactionForm.reset();
       } catch (error) {
         console.error("Error adding transaction: ", error);
-        showAlert("Could not add transaction. Please try again.");
+        showAlert("Could not add transaction.");
       }
     };
+
     const handleTransferSubmit = (e) => {
       e.preventDefault();
       const amount = +$('transfer-amount').value;
-      if (!amount) return;
+      if (!amount || amount <= 0) {
+        showAlert("Please enter a valid transfer amount.");
+        return;
+      }
       tempTransferData = {
         text: `Transfer to ${$('recipient-name').value}`,
         amount: -amount,
@@ -406,44 +392,40 @@
       };
       showPinModal();
     };
+
     const confirmTransferWithPin = async () => {
-      pinConfirmBtn.disabled = true; // Prevent multiple clicks
-      pinErrorEl.textContent = '';
       let enteredPin = "";
       pinInputs.forEach(i => enteredPin += i.value);
-      try {
-        const userDoc = await getDoc(doc(db, 'users', currentUserId));
-        // --- FIX: Compare PINs as strings to avoid type mismatch (e.g., '1234' vs 1234) ---
-        if (enteredPin === String(userDoc.data().pin)) {
+      
+      // We use the cachedUserData which is kept up-to-date by our listener
+      if (enteredPin === String(cachedUserData.pin)) {
+        try {
           await addDoc(collection(db, 'users', currentUserId, 'transactions'), tempTransferData);
           hidePinModal();
           showAlert("Transfer successful!");
           transferForm.reset();
           showPage('dashboard-page');
-        } else {
-          pinErrorEl.textContent = 'Incorrect PIN.';
+        } catch(error) {
+           console.error("Error adding transfer transaction:", error);
+           pinErrorEl.textContent = 'Transfer failed. Try again.';
         }
-      } catch (error) {
-        console.error("Error during transfer confirmation:", error);
-        pinErrorEl.textContent = 'An error occurred. Please try again.';
-      } finally {
-        pinConfirmBtn.disabled = false; // Re-enable button
+      } else {
+        pinErrorEl.textContent = 'Incorrect PIN.';
       }
     };
+
     const handleCurrencyChange = async () => {
       const newCurrency = currencySelector.value;
       const userDocRef = doc(db, 'users', currentUserId);
       try {
-        await updateDoc(userDocRef, {
-          currency: newCurrency
-        });
-        // --- FIX: The `onSnapshot` listener will automatically catch this change and update the UI.
-        // No extra manual update is needed here, simplifying the code.
+        await updateDoc(userDocRef, { currency: newCurrency });
+        // The 'listenForData' function will automatically see this change and update the UI.
       } catch (error) {
-        console.error("Error updating currency:", error);
-        showAlert("Failed to update currency preference.");
+         console.error("Error updating currency:", error);
+         showAlert("Failed to update currency preference.");
       }
     };
+
     // --- PWA Service Worker ---
     if ('serviceWorker' in navigator) {
       const swContent = `
@@ -451,20 +433,16 @@
                 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE_NAME).then(c => c.add('/'))) });
                 self.addEventListener('fetch', e => { e.respondWith(caches.match(e.request).then(res => res || fetch(e.request))) });
             `;
-      const blob = new Blob([swContent], {
-        type: 'application/javascript'
-      });
+      const blob = new Blob([swContent], { type: 'application/javascript' });
       const swUrl = URL.createObjectURL(blob);
       navigator.serviceWorker.register(swUrl)
         .then(reg => console.log('Service worker registered.', reg))
         .catch(err => console.log('Service worker not registered.', err));
     }
+
     // --- EVENT LISTENERS ---
     authButton.addEventListener('click', handleAuthAction);
-    authToggleLink.addEventListener('click', (e) => {
-      e.preventDefault();
-      toggleAuthMode();
-    });
+    authToggleLink.addEventListener('click', (e) => { e.preventDefault(); toggleAuthMode(); });
     logoutBtn.addEventListener('click', () => signOut(auth));
     transferBtn.addEventListener('click', () => showPage('transfer-page'));
     backToDashboardBtn.addEventListener('click', () => showPage('dashboard-page'));
@@ -478,6 +456,6 @@
     currencySelector.addEventListener('change', handleCurrencyChange);
   </script>
 </body>
-
 </html>
+
 
